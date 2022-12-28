@@ -105,3 +105,5 @@ class MyCustomVerifier implements ExistanceVerifier
     }
 }
 ```
+
+**Note** The library is still under development as the API might change.
