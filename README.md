@@ -106,7 +106,7 @@ class MyCustomVerifier implements ExistanceVerifier
 }
 ```
 
-- Customize the validation error message
+- Customize the validation error message (^0.1.2)
 
 Case required to customize the message output to user when validation fails, use the `withMessage()` method or pass a third or fourth argument to the class constructor:
 
