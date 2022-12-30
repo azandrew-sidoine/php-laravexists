@@ -106,4 +106,29 @@ class MyCustomVerifier implements ExistanceVerifier
 }
 ```
 
+- Customize the validation error message
+
+Case required to customize the message output to user when validation fails, use the `withMessage()` method or pass a third or fourth argument to the class constructor:
+
+```php
+use Drewlabs\LaravExists\Exists;
+
+// ...
+
+class MyFormRequest
+{
+
+    public function rules()
+    {
+        return [
+            // ...
+            'post_id' => [new Exists('table', 'column', 'The selected post_id is invalid')]
+
+            // In case using existance verifier
+            'comment_id' => [new Exists(new InstanceClass, 'column', 'The selected post_id is invalid')]
+        ]
+    }
+}
+```
+
 **Note** The library is still under development as the API might change.
