@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace Drewlabs\LaravExists;
 
 use Illuminate\Support\Facades\Http;
-
 class HTTPExistanceClient implements ExistanceVerifier, ExistsQueryable
 {
     /**
@@ -58,19 +57,21 @@ class HTTPExistanceClient implements ExistanceVerifier, ExistsQueryable
      */
     public static function create(string $url, array $headers = [], ?callable $validateResult = null)
     {
-        $callback = $validateResult ?? static function ($result, $key, $value) {
+        $callback = $validateResult ?? static function ($result) {
             $values = (array) ($result['data'] ?? []);
-            $exists = false;
-            // Foreach values returned by the API, the existance of the searched value is
-            // determined if the value key match the user provided value
-            foreach ($values as $current) {
-                if ($current[$key] === $value) {
-                    $exists = true;
-                    break;
-                }
-            }
+            // We simply checks if the return result contains values and is a list values
+            return $values === array_filter($values, 'is_array') && count($values) !== 0;
+            // $exists = false;
+            // // Foreach values returned by the API, the existance of the searched value is
+            // // determined if the value key match the user provided value
+            // foreach ($values as $current) {
+            //     if ($current[$key] === $value) {
+            //         $exists = true;
+            //         break;
+            //     }
+            // }
 
-            return $exists;
+            // return $exists;
         };
 
         return new self($url, $headers ?? [], $callback);
