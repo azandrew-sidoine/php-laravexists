@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Drewlabs\LaravExists;
 
 use Illuminate\Support\Facades\Http;
+
 class HTTPExistanceClient implements ExistanceVerifier, ExistsQueryable
 {
     /**
@@ -61,17 +62,6 @@ class HTTPExistanceClient implements ExistanceVerifier, ExistsQueryable
             $values = (array) ($result['data'] ?? []);
             // We simply checks if the return result contains values and is a list values
             return $values === array_filter($values, 'is_array') && count($values) !== 0;
-            // $exists = false;
-            // // Foreach values returned by the API, the existance of the searched value is
-            // // determined if the value key match the user provided value
-            // foreach ($values as $current) {
-            //     if ($current[$key] === $value) {
-            //         $exists = true;
-            //         break;
-            //     }
-            // }
-
-            // return $exists;
         };
 
         return new self($url, $headers ?? [], $callback);
@@ -84,7 +74,7 @@ class HTTPExistanceClient implements ExistanceVerifier, ExistsQueryable
      */
     public function withBearerToken(?string $token = null)
     {
-        $this->headers = array_merge($this->headers ?? [], ['Authorization' => 'Bearer '.$token]);
+        $this->headers = array_merge($this->headers ?? [], ['Authorization' => 'Bearer ' . $token]);
 
         return $this;
     }
@@ -93,32 +83,44 @@ class HTTPExistanceClient implements ExistanceVerifier, ExistsQueryable
     {
         if (isset($this->query['where'])) {
             $this->query['where'][] = [$column, $value];
+        } else {
+            $this->query['where'] = [[$column, $value]];
         }
-        $this->query['where'] = [[$column, $value]];
+
+        return $this;
     }
 
     public function whereNot($column, $value = null)
     {
         if (isset($this->query['where'])) {
             $this->query['where'][] = [$column, '!=', $value];
+        } else {
+            $this->query['where'] = [[$column, '!=', $value]];
         }
-        $this->query['where'] = [[$column, '!=', $value]];
+
+        return $this;
     }
 
     public function whereNotNull(string $column)
     {
         if (isset($this->query['whereNotNull'])) {
             $this->query['whereNotNull'][] = $column;
+        } else {
+            $this->query['whereNotNull'] = [$column];
         }
-        $this->query['whereNotNull'] = [$column];
+
+        return $this;
     }
 
     public function whereNull(string $column)
     {
         if (isset($this->query['whereNull'])) {
             $this->query['whereNull'][] = $column;
+        } else {
+            $this->query['whereNull'] = [$column];
         }
-        $this->query['whereNull'] = [$column];
+
+        return $this;
     }
 
     public function exists(string $column, $value)
@@ -131,7 +133,6 @@ class HTTPExistanceClient implements ExistanceVerifier, ExistsQueryable
         if (!$response->ok()) {
             return false;
         }
-
         return ($this->validateResult)(json_decode($response->body(), true), $column, $value);
     }
 }
