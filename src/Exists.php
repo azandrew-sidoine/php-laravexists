@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace Drewlabs\LaravExists;
 
 use Closure;
-use Illuminate\Contracts\Validation\Rule;
+use Illuminate\Contracts\Validation\ValidationRule as Rule;
 use Illuminate\Contracts\Validation\ValidatorAwareRule;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\Rule as ValidationRule;
@@ -73,6 +73,13 @@ class Exists implements Rule, ValidatorAwareRule
         $this->column = $column;
         // If the projectOrMessage is a string and is not a global function, we use it as the validation message
         $this->message = is_string($projectOrMessage) && !function_exists($projectOrMessage) ? $projectOrMessage : $message;
+    }
+
+    public function validate(string $attribute, mixed $value, Closure $fail): void
+    {
+        if (!$this->passes($attribute, $value)) {
+            $fail($this->message());
+        }
     }
 
     public function __call($name, $arguments)

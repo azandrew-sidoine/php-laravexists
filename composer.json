@@ -16,6 +16,11 @@
             "Drewlabs\\LaravExists\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Drewlabs\\LaravExists\\Tests\\": "tests/"
+        }
+    },
     "authors": [
         {
             "name": "azandrew-sidoine",
@@ -25,7 +30,11 @@
     "minimum-stability": "dev",
     "prefer-stable": true,
     "require": {
-        "illuminate/validation": "^7.0|^8.0|^9.0",
-        "psr/http-message": "^1.0"
+        "illuminate/validation": "^10.0",
+        "psr/http-message": "^1.0|^2.0"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
     }
 }
