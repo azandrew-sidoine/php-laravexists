@@ -16,7 +16,6 @@ namespace Drewlabs\LaravExists;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule as Rule;
 use Illuminate\Contracts\Validation\ValidatorAwareRule;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\Rule as ValidationRule;
 use Illuminate\Validation\Rules\Exists as RulesExists;
 use Illuminate\Validation\ValidationRuleParser;
@@ -34,7 +33,7 @@ class Exists implements Rule, ValidatorAwareRule
     use MethodProxy;
 
     /**
-     * @var \Closure|ExistanceVerifier|RulesExists
+     * @var \Closure|ExistanceVerifier|RulesExists|\Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder
      */
     private $queryClient;
 
@@ -59,20 +58,20 @@ class Exists implements Rule, ValidatorAwareRule
      * 
      * @param mixed $table 
      * @param string $column 
-     * @param string|\Closure|null $projectOrMessage The 3rd argument to the function takes a string used as validation message
+     * @param string|\Closure|null $project         The 3rd argument to the function takes a string used as validation message
      *                                               or a projection closure that might be used in case of HTTP Existance verifier
      * @param string|null $message
      * 
      */
-    public function __construct($table, $column = 'id', $projectOrMessage = null, string $message = null)
+    public function __construct($table, $column = 'id', $project = null, string $message = null)
     {
         $this->queryClient = 1 === \func_num_args() || ((!\is_string($table) && \is_callable($table)) || \is_object($table)) ?
             $table : (static::isValidURL($table) ?
-                new HTTPExistanceClient(rtrim($table ?? '', '/'), [], $projectOrMessage) :
+                new HTTPExistanceClient(rtrim($table ?? '', '/'), [], $project) :
                 ValidationRule::exists($table, $column));
         $this->column = $column;
-        // If the projectOrMessage is a string and is not a global function, we use it as the validation message
-        $this->message = is_string($projectOrMessage) && !function_exists($projectOrMessage) ? $projectOrMessage : $message;
+        // If the project is a string and is not a global function, we use it as the validation message
+        $this->message = is_string($project) && !function_exists($project) ? $project : $message;
     }
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
@@ -115,31 +114,31 @@ class Exists implements Rule, ValidatorAwareRule
      * 
      * @param mixed $table 
      * @param null|string $key 
-     * @param string|\Closure|null $projectOrMessage The 3rd argument to the function takes a string used as validation message
+     * @param string|\Closure|null $project The 3rd argument to the function takes a string used as validation message
      *                                               or a projection closure that might be used in case of HTTP Existance verifier
      * @param string|null $message 
      * @return static 
      * @throws InvalidArgumentException 
      */
-    public static function create($table, ?string $key = 'id', $projectOrMessage = null, string $message = null)
+    public static function create($table, ?string $key = 'id', $project = null, string $message = null)
     {
         if (\is_string($table) && self::isValidURL($table)) {
             return new static(
                 new HTTPExistanceClient(
                     $table,
                     [],
-                    is_string($projectOrMessage) && !function_exists($projectOrMessage) ? null : $projectOrMessage
+                    is_string($project) && !function_exists($project) ? null : $project
                 ),
                 $key,
-                $projectOrMessage,
+                $project,
                 $message
             );
         }
-        if (\is_string($table) && class_exists($table) && is_subclass_of($table, Model::class)) {
+        if (\is_string($table) && class_exists($table) && is_subclass_of($table, \Illuminate\Database\Eloquent\Model::class)) {
             return new static(
                 ValidationRule::exists($table, $key),
                 $key,
-                $projectOrMessage,
+                $project,
                 $message
             );
         }
@@ -148,7 +147,7 @@ class Exists implements Rule, ValidatorAwareRule
             return new static(
                 ValidationRule::exists($table, $key),
                 $key,
-                $projectOrMessage,
+                $project,
                 $message
             );
         }
@@ -156,7 +155,7 @@ class Exists implements Rule, ValidatorAwareRule
             return new static(
                 \Closure::fromCallable($table),
                 $key,
-                $projectOrMessage,
+                $project,
                 $message
             );
         }
@@ -168,7 +167,7 @@ class Exists implements Rule, ValidatorAwareRule
             $queryClient = $table;
         }
         if (null !== $queryClient) {
-            return new static($queryClient, $key, $projectOrMessage, $message);
+            return new static($queryClient, $key, $project, $message);
         }
         throw new \InvalidArgumentException('Query table is not supported');
     }
@@ -194,8 +193,13 @@ class Exists implements Rule, ValidatorAwareRule
 
             return $this->validator->validateExists($attribute, $value, $result[1] ?? []);
         }
+
         if ($this->queryClient instanceof ExistanceVerifier) {
             return $this->queryClient->exists($this->column, $value);
+        }
+
+        if ($this->queryClient instanceof \Illuminate\Database\Eloquent\Builder || $this->queryClient instanceof \Illuminate\Database\Query\Builder) {
+            return $this->queryClient->where($this->column, $value)->count() !== 0;
         }
 
         return !empty(($this->queryClient)($attribute, $value)) ? true : false;
