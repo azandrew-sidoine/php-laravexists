@@ -17,24 +17,16 @@ use Illuminate\Support\Facades\Http;
 
 class HTTPExistanceClient implements ExistanceVerifier, ExistsQueryable
 {
-    /**
-     * @var string
-     */
+    /** @var string */
     private $url;
 
-    /**
-     * @var array
-     */
+    /** @var array */
     private $headers;
 
-    /**
-     * @var callable
-     */
+    /** @var callable */
     private $validateResult;
 
-    /**
-     * @var array
-     */
+    /** @var array */
     private $query = [];
 
     /**
@@ -125,11 +117,8 @@ class HTTPExistanceClient implements ExistanceVerifier, ExistsQueryable
 
     public function exists(string $column, $value)
     {
-        $response = Http::acceptJson()->withHeaders($this->headers)
-            ->get($this->url, !empty($this->query) ? [
-                $column => $value,
-                '_query' => json_encode($this->query),
-            ] : [$column => $value]);
+        $params = !empty($this->query) ? [$column => $value, '_query' => json_encode($this->query)] : [$column => $value];
+        $response = Http::acceptJson()->withHeaders($this->headers)->get($this->url, $params);
         if (!$response->ok()) {
             return false;
         }

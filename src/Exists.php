@@ -21,6 +21,9 @@ use Illuminate\Validation\Rules\Exists as RulesExists;
 use Illuminate\Validation\ValidationRuleParser;
 use Illuminate\Validation\Validator;
 use InvalidArgumentException;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as BaseBuilder;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * @method self where(string|\Closure $column, $value = null)
@@ -32,25 +35,16 @@ class Exists implements Rule, ValidatorAwareRule
 {
     use MethodProxy;
 
-    /**
-     * @var \Closure|ExistanceVerifier|RulesExists|\Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder
-     */
+    /** @var mixed */
     private $queryClient;
 
-    /**
-     * @var Validator
-     */
+    /** @var Validator */
     private $validator;
 
-    /**
-     * @var string|null
-     */
+    /** @var string|null */
     private $column;
 
-    /**
-     * 
-     * @var string
-     */
+    /** @var string */
     private $message;
 
     /**
@@ -134,7 +128,7 @@ class Exists implements Rule, ValidatorAwareRule
                 $message
             );
         }
-        if (\is_string($table) && class_exists($table) && is_subclass_of($table, \Illuminate\Database\Eloquent\Model::class)) {
+        if (\is_string($table) && class_exists($table) && is_subclass_of($table, Model::class)) {
             return new static(
                 ValidationRule::exists($table, $key),
                 $key,
@@ -198,7 +192,7 @@ class Exists implements Rule, ValidatorAwareRule
             return $this->queryClient->exists($this->column, $value);
         }
 
-        if ($this->queryClient instanceof \Illuminate\Database\Eloquent\Builder || $this->queryClient instanceof \Illuminate\Database\Query\Builder) {
+        if (is_subclass_of($this->queryClient, Builder::class) || is_subclass_of($this->queryClient, BaseBuilder::class)) {
             return $this->queryClient->where($this->column, $value)->count() !== 0;
         }
 
