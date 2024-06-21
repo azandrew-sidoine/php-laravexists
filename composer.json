@@ -14,7 +14,10 @@
     "autoload": {
         "psr-4": {
             "Drewlabs\\LaravExists\\": "src/"
-        }
+        },
+        "files": [
+            "src/proxies.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {

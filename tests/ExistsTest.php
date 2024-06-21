@@ -1,8 +1,9 @@
 <?php
 
 use Drewlabs\LaravExists\ExistanceVerifier;
-use Drewlabs\LaravExists\Exists;
 use PHPUnit\Framework\TestCase;
+
+use function Drewlabs\LaravExists\Proxy\Exists;
 
 class ExistsTest extends TestCase
 {
@@ -13,7 +14,7 @@ class ExistsTest extends TestCase
         $verifier = $this->createMock(ExistanceVerifier::class);
         $verifier->method('exists')
                 ->willReturn(false);
-        $rule = Exists::create($verifier);
+        $rule = Exists($verifier);
 
         // Act
         $rule->validate('attribute', 'value', function() use (&$count) {
@@ -32,7 +33,7 @@ class ExistsTest extends TestCase
         $verifier = $this->createMock(ExistanceVerifier::class);
         $verifier->method('exists')
                 ->willReturn(true);
-        $rule = Exists::create($verifier);
+        $rule = Exists($verifier);
 
         // Act
         $rule->validate('attribute', 'value', function() use (&$count) {

@@ -14,7 +14,9 @@ use Drewlabs\LaravExists\Exists;
  * @param string|\Closure|null $projectOrMessage The 3rd argument to the function takes a string used as validation message
  *                                               or a projection closure that might be used in case of HTTP Existance verifier
  * @param string|null $message
- * @return static 
+ * 
+ * @return Exists
+ * 
  * @throws InvalidArgumentException 
  */
 function Exists($table, ?string $key = 'id', $projectOrMessage = null, string $message = null)
