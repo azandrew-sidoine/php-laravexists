@@ -1,5 +1,7 @@
 <?php
 
+namespace Drewlabs\LaravExists\Tests;
+
 use Drewlabs\LaravExists\ExistanceVerifier;
 use PHPUnit\Framework\TestCase;
 

@@ -36,7 +36,7 @@ class Exists implements Rule, ValidatorAwareRule
     use MethodProxy;
 
     /** @var mixed */
-    private $queryClient;
+    private $provider;
 
     /** @var Validator */
     private $validator;
@@ -59,7 +59,7 @@ class Exists implements Rule, ValidatorAwareRule
      */
     public function __construct($table, $column = 'id', $project = null, string $message = null)
     {
-        $this->queryClient = 1 === \func_num_args() || ((!\is_string($table) && \is_callable($table)) || \is_object($table)) ?
+        $this->provider = 1 === \func_num_args() || ((!\is_string($table) && \is_callable($table)) || \is_object($table)) ?
             $table : (static::isValidURL($table) ?
                 new HTTPExistanceClient(rtrim($table ?? '', '/'), [], $project) :
                 ValidationRule::exists($table, $column));
@@ -77,10 +77,10 @@ class Exists implements Rule, ValidatorAwareRule
 
     public function __call($name, $arguments)
     {
-        if ($this->queryClient instanceof \Closure) {
+        if ($this->provider instanceof \Closure) {
             throw new \LogicException('Closure based query ');
         }
-        $this->queryClient = $this->proxy($this->queryClient, $name, $arguments);
+        $this->provider = $this->proxy($this->provider, $name, $arguments);
 
         return $this;
     }
@@ -99,7 +99,7 @@ class Exists implements Rule, ValidatorAwareRule
      */
     public function getProvider()
     {
-        return $this->queryClient;
+        return $this->provider;
     }
 
     /**
@@ -153,15 +153,13 @@ class Exists implements Rule, ValidatorAwareRule
                 $message
             );
         }
-        /**
-         * @var ExistanceVerifier
-         */
-        $queryClient = null;
+        /** @var ExistanceVerifier */
+        $client = null;
         if (\is_object($table) && ($table instanceof ExistanceVerifier)) {
-            $queryClient = $table;
+            $client = $table;
         }
-        if (null !== $queryClient) {
-            return new static($queryClient, $key, $project, $message);
+        if (null !== $client) {
+            return new static($client, $key, $project, $message);
         }
         throw new \InvalidArgumentException('Query table is not supported');
     }
@@ -178,25 +176,25 @@ class Exists implements Rule, ValidatorAwareRule
      */
     public function passes($attribute, $value)
     {
-        if ($this->queryClient instanceof RulesExists) {
+        if ($this->provider instanceof RulesExists) {
             $data = [$attribute => $value];
             $rules = (new ValidationRuleParser($data))
-                ->explode(ValidationRuleParser::filterConditionalRules([$attribute => $this->queryClient], $data))
+                ->explode(ValidationRuleParser::filterConditionalRules([$attribute => $this->provider], $data))
                 ->rules;
             $result = ValidationRuleParser::parse($rules[$attribute][0]);
 
             return $this->validator->validateExists($attribute, $value, $result[1] ?? []);
         }
 
-        if ($this->queryClient instanceof ExistanceVerifier) {
-            return $this->queryClient->exists($this->column, $value);
+        if ($this->provider instanceof ExistanceVerifier) {
+            return $this->provider->exists($this->column, $value);
         }
 
-        if (is_subclass_of($this->queryClient, Builder::class) || is_subclass_of($this->queryClient, BaseBuilder::class)) {
-            return $this->queryClient->where($this->column, $value)->count() !== 0;
+        if (is_subclass_of($this->provider, Builder::class) || is_subclass_of($this->provider, BaseBuilder::class)) {
+            return $this->provider->where($this->column, $value)->count() !== 0;
         }
 
-        return !empty(($this->queryClient)($attribute, $value)) ? true : false;
+        return !empty(($this->provider)($attribute, $value)) ? true : false;
     }
 
     /**
