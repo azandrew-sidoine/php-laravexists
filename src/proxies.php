@@ -19,7 +19,7 @@ use Drewlabs\LaravExists\Exists;
  * 
  * @throws InvalidArgumentException 
  */
-function Exists($table, ?string $key = 'id', $mixed = null, string $message = null)
+function Exists($table, ?string $key = 'id', $mixed = null, ?string $message = null)
 {
     return Exists::create($table, $key, $mixed, $message);
 }

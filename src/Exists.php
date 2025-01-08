@@ -57,7 +57,7 @@ class Exists implements Rule, ValidatorAwareRule
      * @param string|null $message
      * 
      */
-    public function __construct($table, $column = 'id', $project = null, string $message = null)
+    public function __construct($table, $column = 'id', $project = null, ?string $message = null)
     {
         $this->provider = 1 === \func_num_args() || ((!\is_string($table) && \is_callable($table)) || \is_object($table)) ?
             $table : (static::isValidURL($table) ?
@@ -114,7 +114,7 @@ class Exists implements Rule, ValidatorAwareRule
      * @return static 
      * @throws InvalidArgumentException 
      */
-    public static function create($table, ?string $key = 'id', $project = null, string $message = null)
+    public static function create($table, ?string $key = 'id', $project = null, ?string $message = null)
     {
         if (\is_string($table) && self::isValidURL($table)) {
             return new static(
