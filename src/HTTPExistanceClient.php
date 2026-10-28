@@ -32,7 +32,7 @@ class HTTPExistanceClient implements ExistanceVerifier, ExistsQueryable
     /**
      * Create an HTTP client verifier instance.
      *
-     * @param Closure|callable $validateResult
+     * @param \Closure|callable $validateResult
      *
      * @return void
      */

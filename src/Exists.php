@@ -24,6 +24,7 @@ use InvalidArgumentException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as BaseBuilder;
 use Illuminate\Database\Eloquent\Model;
+use LogicException;
 
 /**
  * @method self where(string|\Closure $column, $value = null)
@@ -31,7 +32,7 @@ use Illuminate\Database\Eloquent\Model;
  * @method self whereNotNull(string $column)
  * @method self whereNull(string $column)
  */
-class Exists implements Rule, ValidatorAwareRule
+final class Exists implements Rule, ValidatorAwareRule
 {
     use MethodProxy;
 
@@ -75,6 +76,14 @@ class Exists implements Rule, ValidatorAwareRule
         }
     }
 
+    /**
+     * 
+     * @param mixed $name 
+     * @param mixed $arguments 
+     * @return static
+     * 
+     * @throws LogicException 
+     */
     public function __call($name, $arguments)
     {
         if ($this->provider instanceof \Closure) {
@@ -153,14 +162,17 @@ class Exists implements Rule, ValidatorAwareRule
                 $message
             );
         }
-        /** @var ExistanceVerifier */
+        /** @var ExistanceVerifier|null */
         $client = null;
+
         if (\is_object($table) && ($table instanceof ExistanceVerifier)) {
             $client = $table;
         }
+        
         if (null !== $client) {
             return new static($client, $key, $project, $message);
         }
+
         throw new \InvalidArgumentException('Query table is not supported');
     }
 

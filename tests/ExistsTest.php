@@ -3,12 +3,15 @@
 namespace Drewlabs\LaravExists\Tests;
 
 use Drewlabs\LaravExists\ExistanceVerifier;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\TestCase;
 
 use function Drewlabs\LaravExists\Proxy\Exists;
 
 class ExistsTest extends TestCase
 {
+
+    #[AllowMockObjectsWithoutExpectations]
     public function test_exists_validate_calls_callback_on_failure()
     {
         // Initialize
@@ -28,6 +31,7 @@ class ExistsTest extends TestCase
     }
 
     
+    #[AllowMockObjectsWithoutExpectations]
     public function test_exists_validate_does_not_calls_callback_on_success()
     {
         // Initialize
