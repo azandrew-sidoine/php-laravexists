@@ -25,19 +25,23 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as BaseBuilder;
 use Illuminate\Database\Eloquent\Model;
 use LogicException;
+use RuntimeException;
 
 /**
- * @method self where(string|\Closure $column, $value = null)
- * @method self whereNot(string|\Closure $column, $value = null)
- * @method self whereNotNull(string $column)
- * @method self whereNull(string $column)
+ * @method static where(string|\Closure $column, $value = null)
+ * @method static whereNot(string|\Closure $column, $value = null)
+ * @method static whereNotNull(string $column)
+ * @method static whereNull(string $column)
  */
 final class Exists implements Rule, ValidatorAwareRule
 {
     use MethodProxy;
 
     /** @var mixed */
-    private $provider;
+    private $builder;
+
+    /** @var mixed */
+    private $table;
 
     /** @var Validator */
     private $validator;
@@ -48,25 +52,25 @@ final class Exists implements Rule, ValidatorAwareRule
     /** @var string */
     private $message;
 
+    /** @var callable */
+    private $callback;
+
     /**
      * Create exists rule instance
      * 
      * @param mixed $table 
      * @param string $column 
-     * @param string|\Closure|null $project         The 3rd argument to the function takes a string used as validation message
+     * @param string|\Closure|null $callback         The 3rd argument to the function takes a string used as validation message
      *                                               or a projection closure that might be used in case of HTTP Existance verifier
      * @param string|null $message
      * 
      */
-    public function __construct($table, $column = 'id', $project = null, ?string $message = null)
+    public function __construct($table, $column = 'id', $callback = null, ?string $message = null)
     {
-        $this->provider = 1 === \func_num_args() || ((!\is_string($table) && \is_callable($table)) || \is_object($table)) ?
-            $table : (static::isValidURL($table) ?
-                new HTTPExistanceClient(rtrim($table ?? '', '/'), [], $project) :
-                ValidationRule::exists($table, $column));
+        $this->table = $table;
         $this->column = $column;
-        // If the project is a string and is not a global function, we use it as the validation message
-        $this->message = is_string($project) && !function_exists($project) ? $project : $message;
+        $this->callback = $callback;
+        $this->message = is_string($callback) && !function_exists($callback) ? $callback : $message;
     }
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
@@ -86,10 +90,13 @@ final class Exists implements Rule, ValidatorAwareRule
      */
     public function __call($name, $arguments)
     {
-        if ($this->provider instanceof \Closure) {
+        $builder = $this->getBuilder();
+
+        if ($builder instanceof \Closure) {
             throw new \LogicException('Closure based query ');
         }
-        $this->provider = $this->proxy($this->provider, $name, $arguments);
+
+        $this->builder = $this->proxy($this->builder, $name, $arguments);
 
         return $this;
     }
@@ -104,11 +111,13 @@ final class Exists implements Rule, ValidatorAwareRule
     /**
      * Query client provider getter.
      *
+     * @deprecated
+     * 
      * @return \Closure|ExistanceVerifier|RulesExists
      */
     public function getProvider()
     {
-        return $this->provider;
+        return $this->builder;
     }
 
     /**
@@ -145,7 +154,7 @@ final class Exists implements Rule, ValidatorAwareRule
                 $message
             );
         }
-        // This case assume we are building using a table name and a column
+
         if (\is_string($table) && !is_a($table, ExistanceVerifier::class, true)) {
             return new static(
                 ValidationRule::exists($table, $key),
@@ -154,6 +163,7 @@ final class Exists implements Rule, ValidatorAwareRule
                 $message
             );
         }
+
         if (!\is_string($table) && \is_callable($table)) {
             return new static(
                 \Closure::fromCallable($table),
@@ -168,12 +178,12 @@ final class Exists implements Rule, ValidatorAwareRule
         if (\is_object($table) && ($table instanceof ExistanceVerifier)) {
             $client = $table;
         }
-        
+
         if (null !== $client) {
             return new static($client, $key, $project, $message);
         }
 
-        throw new \InvalidArgumentException('Query table is not supported');
+        throw new \InvalidArgumentException('query table is not supported');
     }
 
     /**
@@ -188,25 +198,34 @@ final class Exists implements Rule, ValidatorAwareRule
      */
     public function passes($attribute, $value)
     {
-        if ($this->provider instanceof RulesExists) {
+        $builder = $this->getBuilder();
+
+        if ($builder instanceof RulesExists) {
             $data = [$attribute => $value];
-            $rules = (new ValidationRuleParser($data))
-                ->explode(ValidationRuleParser::filterConditionalRules([$attribute => $this->provider], $data))
-                ->rules;
+            $parser = new ValidationRuleParser($data);
+            $rules = $parser->explode(ValidationRuleParser::filterConditionalRules([$attribute => $builder], $data))->rules;
             $result = ValidationRuleParser::parse($rules[$attribute][0]);
 
             return $this->validator->validateExists($attribute, $value, $result[1] ?? []);
         }
 
-        if ($this->provider instanceof ExistanceVerifier) {
-            return $this->provider->exists($this->column, $value);
+        if ($builder instanceof ExistanceVerifier) {
+            return $builder->exists($this->column, $value);
         }
 
-        if (is_subclass_of($this->provider, Builder::class) || is_subclass_of($this->provider, BaseBuilder::class)) {
-            return $this->provider->where($this->column, $value)->count() !== 0;
+        if ($builder instanceof Builder || $builder instanceof BaseBuilder) {
+            return $builder->where($this->column, $value)->count() !== 0;
         }
 
-        return !empty(($this->provider)($attribute, $value)) ? true : false;
+        if (is_subclass_of($builder, Builder::class) || is_subclass_of($builder, BaseBuilder::class)) {
+            return $builder->where($this->column, $value)->count() !== 0;
+        }
+
+        if (is_callable($builder)) {
+            return !empty(call_user_func($builder, $attribute, $value)) ? true : false;
+        }
+
+        throw new RuntimeException(sprintf("unsupported validation provider type %s", is_object($builder) && !is_null($builder) ? get_class($builder) : gettype($builder)));
     }
 
     /**
@@ -240,10 +259,17 @@ final class Exists implements Rule, ValidatorAwareRule
      */
     private static function isValidURL($url)
     {
-        // In case the url is a psr message uri interface
-        // we cast the object into PHP string
         $url = \is_string($url) ? $url : (string) $url;
 
         return false !== filter_var($url, \FILTER_VALIDATE_URL);
+    }
+
+    private function getBuilder()
+    {
+        if (is_null($this->builder)) {
+            $this->builder = 1 === \func_num_args() || ((!\is_string($this->table) && \is_callable($this->table)) || \is_object($this->table)) ? $this->table : (static::isValidURL($this->table) ? new HTTPExistanceClient(rtrim($table ?? '', '/'), [], $this->callback) : ValidationRule::exists($this->table, $this->column));
+        }
+
+        return $this->builder;
     }
 }

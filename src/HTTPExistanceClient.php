@@ -52,7 +52,6 @@ class HTTPExistanceClient implements ExistanceVerifier, ExistsQueryable
     {
         $callback = $validateResult ?? static function ($result) {
             $values = (array) ($result['data'] ?? []);
-            // We simply checks if the return result contains values and is a list values
             return $values === array_filter($values, 'is_array') && count($values) !== 0;
         };
 
